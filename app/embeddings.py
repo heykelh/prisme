@@ -78,8 +78,8 @@ async def embed_text(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[f
 
 @retry(
     retry=retry_if_exception_type(EmbeddingError),
-    stop=stop_after_attempt(4),
-    wait=wait_exponential(multiplier=2, min=2, max=30),
+    stop=stop_after_attempt(6),
+    wait=wait_exponential(multiplier=3, min=5, max=60),
     reraise=True,
 )
 async def embed_batch(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
@@ -87,6 +87,7 @@ async def embed_batch(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -
 
     Une requete batch consomme une seule unite de quota requetes,
     quel que soit le nombre de textes du lot.
+    Retry patient (jusqu'a 60 s) pour absorber le throttling RPM du free tier.
     """
     if not texts:
         return []

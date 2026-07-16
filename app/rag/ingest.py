@@ -74,7 +74,7 @@ async def ingest_document(
         ]
         supabase.table("chunks").insert(rows).execute()
         logger.info("progression: %d/%d chunks", min(batch_start + BATCH_SIZE, total), total)
-        await asyncio.sleep(1.0)  # lissage du debit sur le free tier
+        await asyncio.sleep(8.0)  # lissage du debit sur le free tier
 
     logger.info("ingestion terminee: %d chunks pour document %s", total, document_id)
     return document_id
