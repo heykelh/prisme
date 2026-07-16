@@ -6,15 +6,17 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
+from app.db import get_supabase
 from app.llm.router import AllProvidersFailedError
 from app.llm.router import router as llm_router
+from app.rag.retrieve import search
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 app = FastAPI(
     title="PRISME",
     description="Plateforme d'audit de conformite AI Act pour systemes IA de recrutement",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 
@@ -33,6 +35,26 @@ class LLMPingResponse(BaseModel):
     provider: str
     model: str
     latency_ms: int
+
+
+class RequirementOut(BaseModel):
+    article: str
+    criterion_code: str
+    criterion_text: str
+    category: str
+    version: int
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=1000)
+    k: int = Field(default=8, ge=1, le=20)
+
+
+class SearchResult(BaseModel):
+    chunk_id: str
+    document_id: str
+    content: str
+    similarity: float
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -54,3 +76,26 @@ async def llm_ping(body: LLMPingRequest) -> LLMPingResponse:
         model=result.model,
         latency_ms=result.latency_ms,
     )
+
+
+@app.get("/requirements", response_model=list[RequirementOut])
+async def list_requirements() -> list[RequirementOut]:
+    """Le referentiel d'exigences actif, trie par code."""
+    supabase = get_supabase()
+    result = supabase.table("requirements").select("*").order("criterion_code").execute()
+    return [RequirementOut(**row) for row in result.data]
+
+
+@app.post("/rag/search", response_model=list[SearchResult])
+async def rag_search(body: SearchRequest) -> list[SearchResult]:
+    """Recherche vectorielle dans le corpus reglementaire."""
+    results = await search(body.query, body.k)
+    return [
+        SearchResult(
+            chunk_id=r.chunk_id,
+            document_id=r.document_id,
+            content=r.content,
+            similarity=r.similarity,
+        )
+        for r in results
+    ]

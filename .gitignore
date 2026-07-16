@@ -33,3 +33,5 @@ desktop.ini
 # Logs et fichiers temporaires
 *.log
 *.tmp
+
+corpus/

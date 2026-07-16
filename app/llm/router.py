@@ -4,6 +4,8 @@ Strategie : Gemini 2.5 Flash en primaire (contexte long, free tier genereux),
 Mistral en fallback (LLM europeen, argument narratif conformite).
 Chaque appel est trace avec le provider utilise et la latence, car un outil
 d'audit doit etre lui-meme auditable.
+Les cles API passent en header, jamais dans l'URL, pour ne pas fuiter dans
+les logs et tracebacks.
 """
 
 import logging
@@ -85,7 +87,7 @@ class LLMRouter:
         async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
             response = await client.post(
                 url,
-                params={"key": settings.gemini_api_key},
+                headers={"x-goog-api-key": settings.gemini_api_key},
                 json=payload,
             )
         _raise_for_retryable(response)
